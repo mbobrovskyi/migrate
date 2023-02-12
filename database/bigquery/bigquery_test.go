@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	connectionUrl = "bigquery://https://www.googleapis.com/bigquery/v2:443?x-migrations-table=schema_migrations&x-statement-timeout=0&credentials_filename=./tmp/myproject-XXXXXXXXXXXXX-XXXXXXXXXXXX.json&dataset_id=mydataset"
+	//connectionUrl = "bigquery://https://bigquery.googleapis.com/bigquery/v2/?x-migrations-table=schema_migrations&x-statement-timeout=0&credentials_filename=./tmp/myproject-XXXXXXXXXXXXX-XXXXXXXXXXXX.json&dataset_id=mydataset"
+	connectionUrl = "bigquery://http://0.0.0.0:9050/?x-migrations-table=schema_migrations&project_id=myproject&dataset_id=mydataset"
 )
 
 func openConnection() (database.Driver, error) {
@@ -22,7 +23,25 @@ func openConnection() (database.Driver, error) {
 }
 
 func TestOpen(t *testing.T) {
-	_, err := openConnection()
+	driver, err := openConnection()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	defer driver.Close()
+}
+
+func TestClose(t *testing.T) {
+	driver, err := openConnection()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	defer driver.Close()
+
+	err = driver.Close()
 	if err != nil {
 		t.Error(err)
 		return
@@ -36,6 +55,8 @@ func TestVersion(t *testing.T) {
 		return
 	}
 
+	defer driver.Close()
+
 	version, dirty, err := driver.Version()
 	if err != nil {
 		t.Error(err)
@@ -45,34 +66,6 @@ func TestVersion(t *testing.T) {
 	t.Log(version, dirty)
 }
 
-func TestDrop(t *testing.T) {
-	driver, err := openConnection()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	err = driver.Drop()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-}
-
-func TestClose(t *testing.T) {
-	driver, err := openConnection()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	err = driver.Close()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-}
-
 func TestSetVersion(t *testing.T) {
 	driver, err := openConnection()
 	if err != nil {
@@ -80,7 +73,25 @@ func TestSetVersion(t *testing.T) {
 		return
 	}
 
+	defer driver.Close()
+
 	err = driver.SetVersion(-1, false)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func TestDrop(t *testing.T) {
+	driver, err := openConnection()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	defer driver.Close()
+
+	err = driver.Drop()
 	if err != nil {
 		t.Error(err)
 		return
@@ -93,6 +104,8 @@ func TestRun(t *testing.T) {
 		t.Error(err)
 		return
 	}
+
+	defer driver.Close()
 
 	err = driver.Run(strings.NewReader(`
 		CREATE TABLE IF NOT EXISTS users (
@@ -111,6 +124,8 @@ func TestRunWithError(t *testing.T) {
 		t.Error(err)
 		return
 	}
+
+	defer driver.Close()
 
 	err = driver.Run(strings.NewReader(`
 		CREATE TABLE IF NOT EXISTS users (

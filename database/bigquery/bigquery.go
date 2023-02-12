@@ -14,6 +14,7 @@ import (
 	"google.golang.org/api/option"
 	"io"
 	nurl "net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -148,12 +149,14 @@ func (b *BigQuery) Open(url string) (database.Driver, error) {
 		}
 	}
 
-	//By default, try to get from environment variable GOOGLE_APPLICATION_CREDENTIALS
 	if q.Has("credentials_filename") {
 		opts = append(opts, option.WithCredentialsFile(q.Get("credentials_filename")))
+	} else if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") != "" {
+		opts = append(opts, option.WithCredentialsFile(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")))
+	} else {
+		opts = append(opts, option.WithoutAuthentication())
 	}
 
-	// By default, try to get from credentials file
 	projectID := bigquery.DetectProjectID
 	if q.Has("project_id") {
 		projectID = q.Get("project_id")
@@ -174,6 +177,8 @@ func (b *BigQuery) Open(url string) (database.Driver, error) {
 	if q.Has("time_zone") {
 		config.TimeZone = q.Get("time_zone")
 	}
+
+	opts = append(opts, option.WithEndpoint(fmt.Sprintf("%s%s", purl.Host, purl.Path)))
 
 	client, err := bigquery.NewClient(ctx, projectID, opts...)
 	if err != nil {
