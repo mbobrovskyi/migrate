@@ -1,6 +1,8 @@
 package bigquery
 
 import (
+	"context"
+	"errors"
 	"github.com/golang-migrate/migrate/v4/database"
 	"strings"
 	"testing"
@@ -22,6 +24,22 @@ func openConnection() (database.Driver, error) {
 	return driver, nil
 }
 
+func TestWithInstanceWithoutClient(t *testing.T) {
+	driver, err := WithInstance(context.Background(), nil, &Config{})
+	if err == nil {
+		t.Errorf("expected `no client`, got nil")
+		return
+	}
+	if !errors.Is(err, ErrNoClient) {
+		t.Errorf("expected `no client`, got %s", err.Error())
+		return
+	}
+	if driver != nil {
+		t.Errorf("driver should be nil")
+		return
+	}
+}
+
 func TestOpen(t *testing.T) {
 	driver, err := openConnection()
 	if err != nil {
@@ -29,7 +47,12 @@ func TestOpen(t *testing.T) {
 		return
 	}
 
-	defer driver.Close()
+	defer func() {
+		err := driver.Close()
+		if err != nil {
+			t.Error(err)
+		}
+	}()
 }
 
 func TestClose(t *testing.T) {
@@ -39,7 +62,12 @@ func TestClose(t *testing.T) {
 		return
 	}
 
-	defer driver.Close()
+	defer func() {
+		err := driver.Close()
+		if err != nil {
+			t.Error(err)
+		}
+	}()
 
 	err = driver.Close()
 	if err != nil {
@@ -55,7 +83,12 @@ func TestVersion(t *testing.T) {
 		return
 	}
 
-	defer driver.Close()
+	defer func() {
+		err := driver.Close()
+		if err != nil {
+			t.Error(err)
+		}
+	}()
 
 	version, dirty, err := driver.Version()
 	if err != nil {
@@ -73,7 +106,12 @@ func TestSetVersion(t *testing.T) {
 		return
 	}
 
-	defer driver.Close()
+	defer func() {
+		err := driver.Close()
+		if err != nil {
+			t.Error(err)
+		}
+	}()
 
 	err = driver.SetVersion(-1, false)
 	if err != nil {
@@ -89,7 +127,12 @@ func TestDrop(t *testing.T) {
 		return
 	}
 
-	defer driver.Close()
+	defer func() {
+		err := driver.Close()
+		if err != nil {
+			t.Error(err)
+		}
+	}()
 
 	err = driver.Drop()
 	if err != nil {
@@ -105,7 +148,12 @@ func TestRun(t *testing.T) {
 		return
 	}
 
-	defer driver.Close()
+	defer func() {
+		err := driver.Close()
+		if err != nil {
+			t.Error(err)
+		}
+	}()
 
 	err = driver.Run(strings.NewReader(`
 		CREATE TABLE IF NOT EXISTS users (
@@ -125,18 +173,21 @@ func TestRunWithError(t *testing.T) {
 		return
 	}
 
-	defer driver.Close()
+	defer func() {
+		err := driver.Close()
+		if err != nil {
+			t.Error(err)
+		}
+	}()
 
 	err = driver.Run(strings.NewReader(`
 		CREATE TABLE IF NOT EXISTS users (
 			first_name STRINGa,
 		  	last_name STRING
 		)`))
-	if err != nil {
-		t.Log(err)
-		return
+	if err == nil {
+		t.Error("expected 'googleapi: Error 400: Query error: Type not found: STRINGa at [4:36], invalidQuery' got nil")
 	}
 
-	t.Error("error is nil, should be 'googleapi: Error 400: Query error: Type not found: STRINGa at [4:36], invalidQuery'")
-	return
+	t.Log(err)
 }
