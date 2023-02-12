@@ -272,10 +272,9 @@ func (b *BigQuery) SetVersion(version int, dirty bool) error {
 	ctx := context.Background()
 
 	query := fmt.Sprintf(`
-		SET @@dataset_id = '%[1]s';
 		BEGIN TRANSACTION;
-		DELETE FROM %[2]s WHERE true; 
-		INSERT INTO %[2]s (version, dirty) VALUES (%[3]d, %[4]t);
+		DELETE FROM `+"`%[1]s.%[2]s`"+` WHERE true; 
+		INSERT INTO `+"`%[1]s.%[2]s`"+` (version, dirty) VALUES (%[3]d, %[4]t);
 		COMMIT TRANSACTION;
 	`, b.config.DatasetID, b.config.MigrationsTable, version, dirty)
 
